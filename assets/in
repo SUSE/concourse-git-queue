@@ -27,11 +27,7 @@ DESTINATION_DIR=$1
 
 cd $DESTINATION_DIR
 
-if [ -n "$FILTER" ]; then
-  KEY=$(aws s3 ls s3://$BUCKET/$BUCKET_DIR --recursive | grep "${FILTER}" | grep "${VERSION}" | sort | tail -n 1 | awk '{print $4}')
-else
-  KEY=$(aws s3 ls s3://$BUCKET/$BUCKET_DIR --recursive | grep "${VERSION}" | sort | tail -n 1 | awk '{print $4}')
-fi
+KEY=$(aws s3 ls s3://$BUCKET/$BUCKET_DIR --recursive | grep .json | grep "${VERSION}" | sort | tail -n 1 | awk '{print $4}')
 
 aws s3 cp s3://$BUCKET/$KEY ./
                

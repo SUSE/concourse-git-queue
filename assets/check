@@ -50,7 +50,7 @@ else
   version_pipe=""
 fi
 
-command="aws s3 ls s3://$BUCKET/$BUCKET_DIR --recursive | grep .json | sort ${version_pipe} | awk '{print \$4}' | sed 's/.*\///g'| sed 's/\.json$//g'"
+command="aws s3 ls s3://$BUCKET/$BUCKET_DIR --recursive | grep .json  | awk '{print \$4}' | sed 's/.*\///g'| sed 's/\.json$//g' | sort ${version_pipe} | sed 's/.*-//g'"
 KEY="$(eval $command)"
 
 if [ -z "$KEY" ]; then

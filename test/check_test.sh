@@ -15,7 +15,7 @@ EOF
 echo $LATEST_VERSION
 if [ -z "$LATEST_VERSION" ] || [ "$LATEST_VERSION" == "[]" ];
 then
-  echo "test failed"
+  echo "No versions found"
   exit 1
 fi
 
@@ -28,15 +28,15 @@ LATEST_VERSION=$(docker run --rm -i $IMAGE_NAME sh /opt/resource/check <<EOF
     "aws_access_key_id": "$AWS_KEY_ID",
     "aws_secret_access_key": "$AWS_SECRET_ACCESS_KEY"
   },
-  "version": {"ref": "afb0afd27ed7377c0bff4620e3a7f19d8d25eecc"}
+  "version": {"ref": "1f76ad043df336c9379a38fd8152d96d6ec0"}
 }
 EOF
 )
 
-echo $LATEST_VERSIONS
+echo $LATEST_VERSION
 if [ -z "$LATEST_VERSION" ] || [ "$LATEST_VERSION" == "[]" ];
 then
-  echo "test failed"
+  echo "No versions found 2"
   exit 1
 fi
 
