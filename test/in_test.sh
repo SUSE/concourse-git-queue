@@ -21,10 +21,8 @@ docker run --rm -i -v $WORK_DIR:/output $IMAGE_NAME sh /opt/resource/in /output 
   "source": {
     "bucket": "kubecf-ci",
     "bucket_subfolder": "build-queue",
-    "filter": "json",
     "aws_access_key_id": "$AWS_KEY_ID",
     "aws_secret_access_key": "$AWS_SECRET_ACCESS_KEY",
-    "aws_default_region": "eu-central-1",
     "repository": "https://github.com/SUSE/kubecf.git"
   }
 }
