@@ -1,0 +1,6 @@
+#!/bin/bash
+
+echo "This resource doesn't push to s3 buckets"
+# TODO
+
+exit 1

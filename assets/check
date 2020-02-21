@@ -1,0 +1,60 @@
+#!/bin/bash
+#
+# Input JSON from STDIN
+# {
+#   "source": {
+#     "bucket": "test",
+#     "bucket_subfolder": "subfoo/",
+#     "filter": "zip",
+#     "aws_access_key_id": "xxxx",
+#     "aws_secret_access_key": "yyy",
+#   },
+#   "version": { "ref": "file.zip" }
+# }
+
+set -e
+IFS=" "
+
+exec 3>&1 # make stdout available as fd 3 for the result
+exec 1>&2 # redirect all output to stderr for logging
+
+source $(dirname $0)/common.sh
+
+parse_source_config
+
+output_commits() {
+  # commits must be one in each line
+  local commit=$1
+  JSON="$(jq -Rn 'input | split("\n") | map({ ref: . })' <<< $commit)"
+  cat >&3 <<< $JSON
+}
+
+output_single_version() {
+  cat >&3 <<EOF
+[
+  { "ref": "$1" }
+]
+EOF
+}
+
+output_empty_list() {
+  cat >&3 <<EOF
+[]
+EOF
+}
+
+# https://unix.stackexchange.com/a/56432
+if [ -n "$VERSION" ]; then
+  version_pipe=" | sed -n \"/${VERSION}/ { :a; n; p; ba; }\""
+else
+  version_pipe=""
+fi
+
+command="aws s3 ls s3://$BUCKET/$BUCKET_DIR --recursive | grep .json | sort ${version_pipe} | awk '{print \$4}' | sed 's/.*\///g'| sed 's/\.json$//g'"
+KEY="$(eval $command)"
+
+if [ -z "$KEY" ]; then
+  output_empty_list
+else
+  output_commits "$KEY"
+fi
