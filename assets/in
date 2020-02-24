@@ -35,7 +35,7 @@ FILE=$(ls *.json)
 
 # Checkout the commit
 # TODO: Implement private repos and all (like this one: https://github.com/concourse/git-resource/blob/master/assets/in)
-git clone "${GIT_REPO}" src
+git clone "https://github.com/${GIT_REPO}" src
 cd src
 git reset --hard ${VERSION}
 
