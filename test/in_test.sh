@@ -22,8 +22,7 @@ docker run --rm -i -v $WORK_DIR:/output $IMAGE_NAME sh /opt/resource/in /output 
     "bucket": "kubecf-ci",
     "bucket_subfolder": "build-queue",
     "aws_access_key_id": "$AWS_KEY_ID",
-    "aws_secret_access_key": "$AWS_SECRET_ACCESS_KEY",
-    "repository": "https://github.com/SUSE/kubecf.git"
+    "aws_secret_access_key": "$AWS_SECRET_ACCESS_KEY"
   }
 }
 EOF

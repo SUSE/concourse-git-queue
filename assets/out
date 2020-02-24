@@ -12,12 +12,13 @@ BUCKET_DIR=$(jq -r '.source.bucket_subfolder // ""' $payload)
 export AWS_ACCESS_KEY_ID=$(jq -r '.source.aws_access_key_id // ""' $payload)
 export AWS_SECRET_ACCESS_KEY=$(jq -r '.source.aws_secret_access_key// ""' $payload)
 export GITHUB_ACCESS_TOKEN=$(jq -r '.source.access_token// ""' $payload)
-export GIT_REPO=$(jq -r '.source.repository // ""' $payload)
 COMMIT_PATH=$(jq -r '.params.commit_path // ""' $payload)
 STATE=$(jq -r '.params.state // ""' $payload)
 DESCRIPTION=$(jq -r '.params.description // ""' $payload)
-CONTEXT=$(jq -r '.params.context // ""' $payload)
+CONTEXTS=$(jq -r '.params.contexts // ""' $payload)
 TRIGGER=$(jq -r '.params.trigger // ""' $payload)
+REMOTE_PATH=$(jq -r '.params.remote_path // ""' $payload)
+REMOTE=$(jq -r '.params.remote // ""' $payload)
 
 COMMIT=$(cat "${COMMIT_PATH}")
 # Get the json file from S3, updated it and push it back. Race conditions apply!
@@ -28,18 +29,34 @@ else
   aws s3 cp s3://$BUCKET/$KEY ./
 fi
 
-
+update_json_file() {
+  cat ${1} | jq ${2} > ${1}.tmp && mv ${1}.tmp ${1}
+}
 
 FILE=$(ls *.json)
-cat "${FILE}" | jq '.state= "'${STATE}'"'
-cat "${FILE}" | jq '.trigger= "'${TRIGGER}'"'
-cat "${FILE}" | jq '.commit_sha= "'${COMMIT}'"'
+CONTEXTS=${CONTEXTS:-default}
+echo ${CONTEXTS} | tr ',' '\n' | while read context; do
+  update_json_file ${FILE}  '.states["'${context}'"]="'${STATE}'"'
+done
+if [ -n "${TRIGGER}" ]; then
+  update_json_file ${FILE} '.trigger= "'${TRIGGER}'"'
+fi
+if [ -n "${COMMIT}" ]; then
+  update_json_file ${FILE} '.commit_sha= "'${COMMIT}'"'
+fi
+if [ -n "${REMOTE}" ] || [ -n "${REMOTE_PATH}"]; then
+  REMOTE=${REMOTE:-$(cat ${REMOTE_PATH})}
+  update_json_file ${FILE} '.remote= "'${REMOTE}'"'
+fi
+
 aws s3 cp "${FILE}" s3://$BUCKET/$KEY
 
-curl "https://api.github.com/repos/${GIT_REPO}/statuses/$COMMIT?access_token=${GITHUB_ACCESS_TOKEN}" \
-  -H "Content-Type: application/json" \
-  -X POST \
-  -d "{\"state\": \"$STATE\", \"description\": \"${DESCRIPTION}\", \"target_url\": \"${ATC_EXTERNAL_URL}/builds/${BUILD_ID}\"}" 2> /dev/null
+echo ${CONTEXTS} | tr ',' '\n' | while read context; do
+  curl "https://api.github.com/repos/${REMOTE}/statuses/$COMMIT?access_token=${GITHUB_ACCESS_TOKEN}" \
+    -H "Content-Type: application/json" \
+    -X POST \
+    -d "{\"context\": \"${context}\", \"state\": \"${STATE}\", \"description\": \"${DESCRIPTION}\", \"target_url\": \"${ATC_EXTERNAL_URL}/builds/${BUILD_ID}\"}" 2> /dev/null
+done
 
 cat >&3 <<EOF
 {
