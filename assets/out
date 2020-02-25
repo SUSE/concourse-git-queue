@@ -5,10 +5,41 @@
 # - Push the file to S3
 # - Push the state to GitHub
 
+set -e
+IFS=" "
+
+exec 3>&1 # make stdout available as fd 3 for the result
+exec 1>&2 # redirect all output to stderr for logging
+
+function error {
+cat >&3 <<EOF
+{
+  "version": { "ref": "$COMMIT" },
+  "metadata": [
+    { "error": "$ERROR" }
+  ]
+}
+EOF
+}
+trap error ERR
+
+{ # Hide all output
+
 payload=$(mktemp /tmp/resource.XXXXXX)
 cat > $payload <&0
+
+DESTINATION_DIR=$1
+cd $DESTINATION_DIR
+
 BUCKET=$(jq -r '.source.bucket // "something"' $payload)
 BUCKET_DIR=$(jq -r '.source.bucket_subfolder // ""' $payload)
+
+if [ -n "${BUCKET_DIR}" ]; then
+  BUCKET_PATH="${BUCKET}/${BUCKET_DIR}"
+else
+  BUCKET_PATH="${BUCKET}"
+fi
+
 export AWS_ACCESS_KEY_ID=$(jq -r '.source.aws_access_key_id // ""' $payload)
 export AWS_SECRET_ACCESS_KEY=$(jq -r '.source.aws_secret_access_key// ""' $payload)
 export GITHUB_ACCESS_TOKEN=$(jq -r '.source.access_token// ""' $payload)
@@ -20,49 +51,66 @@ TRIGGER=$(jq -r '.params.trigger // ""' $payload)
 REMOTE_PATH=$(jq -r '.params.remote_path // ""' $payload)
 REMOTE=$(jq -r '.params.remote // ""' $payload)
 
+if [ -z "${STATE}" ] || [ -z "${COMMIT_PATH}" ]; then
+  ERROR="params.state and params.commit_path are required"
+  exit 1
+fi
+
 COMMIT=$(cat "${COMMIT_PATH}")
 # Get the json file from S3, updated it and push it back. Race conditions apply!
-KEY=$(aws s3 ls s3://$BUCKET/$BUCKET_DIR --recursive | grep .json | grep "${COMMIT}" | sort | tail -n 1 | awk '{print $4}')
+KEY="$(aws s3 ls s3://${BUCKET_PATH} --recursive | grep .json | grep "${COMMIT}" | sort | tail -n 1 | awk '{print $4}')"
 if [ -z "${KEY}" ]; then
-  echo "{}" > "$(date "+%s")-${COMMIT}.json"
+  FILENAME="$(date "+%s")-${COMMIT}.json"
+  echo "{}" > "${FILENAME}"
 else
-  aws s3 cp s3://$BUCKET/$KEY ./
+  FILENAME="$(basename ${KEY})"
+  aws s3 cp "s3://${BUCKET_PATH}/${FILENAME}" ./
 fi
 
 update_json_file() {
-  cat ${1} | jq ${2} > ${1}.tmp && mv ${1}.tmp ${1}
+  cat "${1}" | jq "${2}" > "${1}".tmp && mv "${1}".tmp "${1}"
 }
 
-FILE=$(ls *.json)
 CONTEXTS=${CONTEXTS:-default}
+# STATE is not optional
 echo ${CONTEXTS} | tr ',' '\n' | while read context; do
-  update_json_file ${FILE}  '.states["'${context}'"]="'${STATE}'"'
+  update_json_file ${FILENAME}  '.states["'${context}'"]="'${STATE}'"'
 done
 if [ -n "${TRIGGER}" ]; then
-  update_json_file ${FILE} '.trigger= "'${TRIGGER}'"'
-fi
-if [ -n "${COMMIT}" ]; then
-  update_json_file ${FILE} '.commit_sha= "'${COMMIT}'"'
-fi
-if [ -n "${REMOTE}" ] || [ -n "${REMOTE_PATH}"]; then
-  REMOTE=${REMOTE:-$(cat ${REMOTE_PATH})}
-  update_json_file ${FILE} '.remote= "'${REMOTE}'"'
+  update_json_file ${FILENAME} '.trigger= "'${TRIGGER}'"'
 fi
 
-aws s3 cp "${FILE}" s3://$BUCKET/$KEY
+# COMMIT param should always be there
+update_json_file ${FILENAME} '.commit_sha= "'${COMMIT}'"'
+
+if [ -n "${REMOTE}" ] || [ -n "${REMOTE_PATH}" ]; then
+  REMOTE=${REMOTE:-$(cat ${REMOTE_PATH})}
+  update_json_file ${FILENAME} '.remote= "'${REMOTE}'"'
+else # try to read it from the (maybe existing) file from S3
+	REMOTE=$(cat ${FILENAME} | jq -r .remote)
+fi
+
+aws s3 cp "${FILENAME}" "s3://${BUCKET_PATH}/${FILENAME}"
 
 echo ${CONTEXTS} | tr ',' '\n' | while read context; do
-  curl "https://api.github.com/repos/${REMOTE}/statuses/$COMMIT?access_token=${GITHUB_ACCESS_TOKEN}" \
+  return_code=$(curl "https://api.github.com/repos/${REMOTE}/statuses/${COMMIT}?access_token=${GITHUB_ACCESS_TOKEN}" -w "%{http_code}" -s \
     -H "Content-Type: application/json" \
     -X POST \
-    -d "{\"context\": \"${context}\", \"state\": \"${STATE}\", \"description\": \"${DESCRIPTION}\", \"target_url\": \"${ATC_EXTERNAL_URL}/builds/${BUILD_ID}\"}" 2> /dev/null
+    -d "{\"context\": \"${context}\", \"state\": \"${STATE}\", \"description\": \"${DESCRIPTION}\", \"target_url\": \"${ATC_EXTERNAL_URL}/builds/${BUILD_ID}\"}")
+  if [[ "$return_code" == "20"* ]]; then
+    echo "Return code $return_code"
+    ERROR="Failed updating Github commit status"
+    exit 1
+  fi
 done
+
+} > /dev/null
 
 cat >&3 <<EOF
 {
   "version": { "ref": "$COMMIT" },
   "metadata": [
-    { "name": "file", "value": "$FILE" }
+    { "name": "file", "value": "$FILENAME" }
   ]
 }
 EOF

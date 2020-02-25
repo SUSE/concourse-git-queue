@@ -13,6 +13,9 @@ This Resource using AWS S3 as a "database" of commits to be tested. Each commit 
 
 ## Put
 
+Non optional params: commit_path and state
+Optional params: todo
+
 ## Check
 
 ## Example usage

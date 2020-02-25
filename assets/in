@@ -38,9 +38,13 @@ FILE=$(ls *.json)
 REMOTE=$(cat ${FILE} | jq -r .remote)
 # Checkout the commit
 # TODO: Implement private repos and all (like this one: https://github.com/concourse/git-resource/blob/master/assets/in)
-git clone "https://github.com/${REMOTE}" src
-cd src
+git clone --bare "https://github.com/${REMOTE}" .git
+git config --unset core.bare
+git remote rm origin
+git remote add origin "https://github.com/${REMOTE}"
 git reset --hard ${VERSION}
+mkdir .git/resource
+echo "${VERSION}" > .git/resource/ref
 
 } > /dev/null
 
