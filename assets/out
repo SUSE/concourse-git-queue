@@ -72,8 +72,10 @@ update_json_file() {
 }
 
 CONTEXTS=${CONTEXTS:-default}
-# STATE is not optional
+# STATE is not optional. Trip whitespace.
+# https://unix.stackexchange.com/a/205854 (Trip whitespace)
 echo ${CONTEXTS} | tr ',' '\n' | while read context; do
+  context=$(echo "${context}" | awk '{$1=$1};1')
   update_json_file ${FILENAME}  '.states["'${context}'"]="'${STATE}'"'
 done
 if [ -n "${TRIGGER}" ]; then
@@ -93,6 +95,7 @@ fi
 aws s3 cp "${FILENAME}" "s3://${BUCKET_PATH}/${FILENAME}"
 
 echo ${CONTEXTS} | tr ',' '\n' | while read context; do
+  context=$(echo "${context}" | awk '{$1=$1};1')
   return_code=$(curl "https://api.github.com/repos/${REMOTE}/statuses/${COMMIT}?access_token=${GITHUB_ACCESS_TOKEN}" -w "%{http_code}" -s \
     -H "Content-Type: application/json" \
     -X POST \
