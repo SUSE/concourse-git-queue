@@ -65,6 +65,10 @@ if [ -z "${KEY}" ]; then
 else
   FILENAME="$(basename ${KEY})"
   aws s3 cp "s3://${BUCKET_PATH}/${FILENAME}" ./
+  # If trigger wasn't passed in params, try to read it from the existing file
+  if [ -z "${TRIGGER}" ]; then
+    TRIGGER=$(cat ${FILENAME} | jq -r .trigger)
+  fi
 fi
 
 update_json_file() {
