@@ -47,6 +47,7 @@ git remote add origin "https://github.com/${REMOTE}"
 git reset --hard ${COMMIT}
 mkdir .git/resource
 echo "${COMMIT}" > .git/resource/ref
+echo "${VERSION}" > .git/resource/version
 
 } > /dev/null
 

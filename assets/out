@@ -14,7 +14,7 @@ exec 1>&2 # redirect all output to stderr for logging
 function error {
 cat >&3 <<EOF
 {
-  "version": { "ref": "$COMMIT" },
+  "version": { "ref": "$VERSION" },
   "metadata": [
     { "error": "$ERROR" }
   ]
@@ -50,6 +50,7 @@ CONTEXTS=$(jq -r '.params.contexts // ""' $payload)
 TRIGGER=$(jq -r '.params.trigger // ""' $payload)
 REMOTE_PATH=$(jq -r '.params.remote_path // ""' $payload)
 REMOTE=$(jq -r '.params.remote // ""' $payload)
+VERSION_PATH=$(jq -r '.params.version_path // ""' $payload)
 
 if [ -z "${STATE}" ] || [ -z "${COMMIT_PATH}" ]; then
   ERROR="params.state and params.commit_path are required"
@@ -57,13 +58,21 @@ if [ -z "${STATE}" ] || [ -z "${COMMIT_PATH}" ]; then
 fi
 
 COMMIT=$(cat "${COMMIT_PATH}")
-# Get the json file from S3, updated it and push it back. Race conditions apply!
-KEY="$(aws s3 ls s3://${BUCKET_PATH} --recursive | grep .json | grep "${COMMIT}" | sort | tail -n 1 | awk '{print $4}')"
-if [ -z "${KEY}" ]; then
-  FILENAME="$(date "+%s")-${COMMIT}.json"
+
+if [ -n "${VERSION_PATH}" ]; then
+  VERSION=$(cat "${VERSION_PATH}")
+  # Get the json file from S3, updated it and push it back. Race conditions apply!
+  EXISTING_FILE="$(aws s3 ls s3://${BUCKET_PATH} --recursive | grep .json | grep "${VERSION}" | sort | tail -n 1 | awk '{print $4}')"
+else
+  VERSION="$(date "+%s")-${COMMIT}"
+  EXISTING_FILE=""
+fi
+
+if [ -z "${EXISTING_FILE}" ]; then
+  FILENAME="${VERSION}.json"
   echo "{}" > "${FILENAME}"
 else
-  FILENAME="$(basename ${KEY})"
+  FILENAME="$(basename ${EXISTING_FILE})"
   aws s3 cp "s3://${BUCKET_PATH}/${FILENAME}" ./
   # If trigger wasn't passed in params, try to read it from the existing file
   if [ -z "${TRIGGER}" ]; then

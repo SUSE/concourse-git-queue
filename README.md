@@ -15,7 +15,7 @@ This Resource using AWS S3 as a "database" of commits to be tested. Each commit 
 
 Non optional params: commit_path and state
 Optional params: todo
-
+Important: If you don't specify a version_path in put params, you will create a new version of the resource!
 ## Check
 
 ## Example usage
