@@ -36,24 +36,29 @@ aws s3 cp s3://$BUCKET/$KEY ./
 FILE=$(ls *.json)
 
 REMOTE=$(cat ${FILE} | jq -r .remote)
+COMMIT=$(cat ${FILE} | jq -r .commit_sha)
+TRIGGER=$(cat ${FILE} | jq -r .trigger)
 # Checkout the commit
 # TODO: Implement private repos and all (like this one: https://github.com/concourse/git-resource/blob/master/assets/in)
 git clone --bare "https://github.com/${REMOTE}" .git
 git config --unset core.bare
 git remote rm origin
 git remote add origin "https://github.com/${REMOTE}"
-git reset --hard ${VERSION}
+git reset --hard ${COMMIT}
 mkdir .git/resource
-echo "${VERSION}" > .git/resource/ref
+echo "${COMMIT}" > .git/resource/ref
 
 } > /dev/null
 
 
 cat >&3 <<EOF
 {
-  "version": { "ref": "$VERSION" },
+  "version": { "ref": "${VERSION}" },
   "metadata": [
-    { "name": "file", "value": "$FILE" }
+    { "name": "file", "value": "${FILE}" },
+    { "name": "commit", "value": "${COMMIT}" },
+    { "name": "remote", "value": "${REMOTE}" },
+    { "name": "trigger", "value": "${TRIGGER}" }
   ]
 }
 EOF

@@ -111,9 +111,12 @@ done
 
 cat >&3 <<EOF
 {
-  "version": { "ref": "$COMMIT" },
+  "version": { "ref": "$(echo ${FILENAME} | sed 's/\.json$//g')" },
   "metadata": [
-    { "name": "file", "value": "$FILENAME" }
+    { "name": "file", "value": "$FILENAME" },
+    { "name": "commit", "value": "${COMMIT}" },
+    { "name": "remote", "value": "${REMOTE}" },
+    { "name": "trigger", "value": "${TRIGGER}" }
   ]
 }
 EOF
