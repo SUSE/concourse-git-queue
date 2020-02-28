@@ -51,6 +51,7 @@ TRIGGER=$(jq -r '.params.trigger // ""' $payload)
 REMOTE_PATH=$(jq -r '.params.remote_path // ""' $payload)
 REMOTE=$(jq -r '.params.remote // ""' $payload)
 VERSION_PATH=$(jq -r '.params.version_path // ""' $payload)
+METADATA_PATH=$(jq -r '.params.metadata_path // ""' $payload)
 
 if [ -z "${STATE}" ] || [ -z "${COMMIT_PATH}" ]; then
   ERROR="params.state and params.commit_path are required"
@@ -95,6 +96,11 @@ if [ -n "${TRIGGER}" ]; then
   update_json_file ${FILENAME} '.trigger= "'${TRIGGER}'"'
 fi
 
+if [ -n "${METADATA_PATH}" ]; then
+  METADATA=$(cat "${METADATA_PATH}")
+  update_json_file ${FILENAME} ".metadata=$(jq -aR . <<< ${METADATA})"
+fi
+
 # COMMIT param should always be there
 update_json_file ${FILENAME} '.commit_sha= "'${COMMIT}'"'
 
@@ -129,7 +135,8 @@ cat >&3 <<EOF
     { "name": "file", "value": "$FILENAME" },
     { "name": "commit", "value": "${COMMIT}" },
     { "name": "remote", "value": "${REMOTE}" },
-    { "name": "trigger", "value": "${TRIGGER}" }
+    { "name": "trigger", "value": "${TRIGGER}" },
+    { "name": "metadata", "value": "${METADATA}" }
   ]
 }
 EOF

@@ -38,6 +38,7 @@ FILE=$(ls *.json)
 REMOTE=$(cat ${FILE} | jq -r .remote)
 COMMIT=$(cat ${FILE} | jq -r .commit_sha)
 TRIGGER=$(cat ${FILE} | jq -r .trigger)
+METADATA=$(cat ${FILE} | jq -r .metadata)
 # Checkout the commit
 # TODO: Implement private repos and all (like this one: https://github.com/concourse/git-resource/blob/master/assets/in)
 git clone --bare "https://github.com/${REMOTE}" .git
@@ -59,7 +60,8 @@ cat >&3 <<EOF
     { "name": "file", "value": "${FILE}" },
     { "name": "commit", "value": "${COMMIT}" },
     { "name": "remote", "value": "${REMOTE}" },
-    { "name": "trigger", "value": "${TRIGGER}" }
+    { "name": "trigger", "value": "${TRIGGER}" },
+    { "name": "metadata", "value": "${METADATA}" }
   ]
 }
 EOF
