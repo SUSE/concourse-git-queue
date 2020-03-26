@@ -69,7 +69,7 @@ Here is what each param means:
 - contexts: A comma separated list of contexts. Normally each job in your pipeline would like to update one of the contexts (e.g. test, build etc) but you may want to set them all to `pending` with one put command.
 - trigger: This is simply metadata in order to keep track of what kind of resource queued the build in the first place. This is free text.
 - metadata_path:  Points to a file with text you want to include in the metadata of the resource. In the example above, it is used to store the url to the PR so you don't have to track it down in your pipeline. You simply click on the resource inside the build and you see which PR triggered it.
-
+- github_state: Boolean that indicates to update the commit status to Github or not (defaults to true)
 
 After running a job (e.g. your run lint on your code), you may want to simply send the status of that specific context to GitHub. You can achieve that with a smaller set of params. E.g.
 

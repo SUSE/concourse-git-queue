@@ -52,6 +52,7 @@ REMOTE_PATH=$(jq -r '.params.remote_path // ""' $payload)
 REMOTE=$(jq -r '.params.remote // ""' $payload)
 VERSION_PATH=$(jq -r '.params.version_path // ""' $payload)
 METADATA_PATH=$(jq -r '.params.metadata_path // ""' $payload)
+GITHUB_STATE=$(jq -r '.params.github_state // "true"' $payload)
 
 if [ -z "${STATE}" ] || [ -z "${COMMIT_PATH}" ]; then
   ERROR="params.state and params.commit_path are required"
@@ -113,18 +114,20 @@ fi
 
 aws s3 cp "${FILENAME}" "s3://${BUCKET_PATH}/${FILENAME}"
 
-echo ${CONTEXTS} | tr ',' '\n' | while read context; do
-  context=$(echo "${context}" | awk '{$1=$1};1')
-  return_code=$(curl "https://api.github.com/repos/${REMOTE}/statuses/${COMMIT}?access_token=${GITHUB_ACCESS_TOKEN}" -w "%{http_code}" -s \
-    -H "Content-Type: application/json" \
-    -X POST \
-    -d "{\"context\": \"${context}\", \"state\": \"${STATE}\", \"description\": \"${DESCRIPTION}\", \"target_url\": \"${ATC_EXTERNAL_URL}/builds/${BUILD_ID}\"}")
-  if [[ "$return_code" == "20"* ]]; then
-    echo "Return code $return_code"
-    ERROR="Failed updating Github commit status"
-    exit 1
-  fi
-done
+if [ "${GITHUB_STATE}" == "true" ]; then
+  echo ${CONTEXTS} | tr ',' '\n' | while read context; do
+    context=$(echo "${context}" | awk '{$1=$1};1')
+    return_code=$(curl "https://api.github.com/repos/${REMOTE}/statuses/${COMMIT}?access_token=${GITHUB_ACCESS_TOKEN}" -w "%{http_code}" -s \
+      -H "Content-Type: application/json" \
+      -X POST \
+      -d "{\"context\": \"${context}\", \"state\": \"${STATE}\", \"description\": \"${DESCRIPTION}\", \"target_url\": \"${ATC_EXTERNAL_URL}/builds/${BUILD_ID}\"}")
+    if [[ "$return_code" == "20"* ]]; then
+      echo "Return code $return_code"
+      ERROR="Failed updating Github commit status"
+      exit 1
+    fi
+  done
+fi
 
 } > /dev/null
 
