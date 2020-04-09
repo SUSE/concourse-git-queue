@@ -47,6 +47,7 @@ EOF
 if [ -n "$VERSION" ]; then
   # Return all newer versions including the given one
   # https://concourse-ci.org/implementing-resource-types.html#resource-check
+  # https://stackoverflow.com/a/3434563
   version_pipe=" | sed -n '/${VERSION}/,\$p'"
 else
   # If there is no version (so resource is fresh in the concourse instance)
