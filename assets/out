@@ -117,8 +117,10 @@ aws s3 cp "${FILENAME}" "s3://${BUCKET_PATH}/${FILENAME}"
 if [ "${GITHUB_STATE}" == "true" ]; then
   echo ${CONTEXTS} | tr ',' '\n' | while read context; do
     context=$(echo "${context}" | awk '{$1=$1};1')
-    return_code=$(curl "https://api.github.com/repos/${REMOTE}/statuses/${COMMIT}?access_token=${GITHUB_ACCESS_TOKEN}" -w "%{http_code}" -s \
+    return_code=$(curl "https://api.github.com/repos/${REMOTE}/statuses/${COMMIT}" \
+      -w "%{http_code}" -s \
       -H "Content-Type: application/json" \
+      -H "Authorization: token ${GITHUB_ACCESS_TOKEN}" \
       -X POST \
       -d "{\"context\": \"${context}\", \"state\": \"${STATE}\", \"description\": \"${DESCRIPTION}\", \"target_url\": \"${ATC_EXTERNAL_URL}/builds/${BUILD_ID}\"}")
     if [[ "$return_code" == "20"* ]]; then
