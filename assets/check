@@ -45,9 +45,15 @@ EOF
 
 # https://unix.stackexchange.com/a/56432
 if [ -n "$VERSION" ]; then
-  version_pipe=" | sed -n \"/${VERSION}/ { :a; n; p; ba; }\""
+  # Return all newer versions including the given one
+  # https://concourse-ci.org/implementing-resource-types.html#resource-check
+  version_pipe=" | sed -n '/${VERSION}/,\$p'"
 else
-  version_pipe=""
+  # If there is no version (so resource is fresh in the concourse instance)
+  # just return the latest version. This means, you will have to retrigger
+  # all pending PRs and such in your pipeline since older S3 files won't be
+  # picked up any more.
+  version_pipe=" | tail -n 1"
 fi
 
 command="aws s3 ls s3://${BUCKET}/${BUCKET_DIR%/}/ --recursive | grep .json  | awk '{print \$4}' | sed 's/.*\///g'| sed 's/\.json$//g' | sort ${version_pipe}"
