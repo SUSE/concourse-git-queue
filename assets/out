@@ -35,7 +35,7 @@ BUCKET=$(jq -r '.source.bucket // "something"' $payload)
 BUCKET_DIR=$(jq -r '.source.bucket_subfolder // ""' $payload)
 
 if [ -n "${BUCKET_DIR}" ]; then
-  BUCKET_PATH="${BUCKET}/${BUCKET_DIR}"
+  BUCKET_PATH="${BUCKET}/${BUCKET_DIR%/}"
 else
   BUCKET_PATH="${BUCKET}"
 fi
@@ -64,7 +64,7 @@ COMMIT=$(cat "${COMMIT_PATH}")
 if [ -n "${VERSION_PATH}" ]; then
   VERSION=$(cat "${VERSION_PATH}")
   # Get the json file from S3, updated it and push it back. Race conditions apply!
-  EXISTING_FILE="$(aws s3 ls s3://${BUCKET_PATH} --recursive | grep .json | grep "${VERSION}" | sort | tail -n 1 | awk '{print $4}')"
+  EXISTING_FILE="$(aws s3 ls s3://${BUCKET_PATH}/ --recursive | grep .json | grep "${VERSION}" | sort | tail -n 1 | awk '{print $4}')"
 else
   VERSION="$(date "+%s")-${COMMIT}"
   EXISTING_FILE=""
